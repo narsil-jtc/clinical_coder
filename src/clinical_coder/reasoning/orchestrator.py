@@ -14,12 +14,7 @@ from clinical_coder.retrieval.terminology_retriever import retrieve_context
 from clinical_coder.rules.validator import validate_candidates
 from clinical_coder.terminology.repository import get_terminology_scope_label
 
-from .providers import (
-    AnthropicReasoningProvider,
-    OllamaReasoningProvider,
-    OpenAIReasoningProvider,
-    ReasoningProvider,
-)
+from .providers import AnthropicReasoningProvider, OpenAIReasoningProvider, ReasoningProvider
 from .state import WorkflowState
 from .tasks import (
     build_note_excerpt,
@@ -39,6 +34,8 @@ def _append_audit(event: dict) -> None:
 
 
 def _build_local_provider(state: dict) -> ReasoningProvider:
+    from .providers.ollama import OllamaReasoningProvider
+
     return OllamaReasoningProvider(
         num_ctx=state.get("llm_num_ctx", settings.ollama_num_ctx),
         num_predict=state.get("llm_num_predict", settings.ollama_num_predict),
