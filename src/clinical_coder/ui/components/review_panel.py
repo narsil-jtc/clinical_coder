@@ -1,14 +1,12 @@
-"""
-Review panel component (right column).
-
-Shows review progress, coding alerts, accepted codes, and export actions.
-"""
+"""Review panel component (right column)."""
 
 import csv
 import io
 from datetime import datetime
 
 import streamlit as st
+
+from clinical_coder.ui.theme import status_banner
 
 from ..state_manager import (
     acknowledge_flag,
@@ -21,8 +19,6 @@ from .confidence_badge import confidence_badge_html
 
 
 def _build_export_csv(validated_codes: list[dict], decisions: dict) -> str:
-    """Build CSV string of accepted and changed codes for export."""
-
     output = io.StringIO()
     writer = csv.writer(output)
     writer.writerow(["code", "description", "code_system", "confidence", "decision", "evidence_span"])
@@ -46,8 +42,6 @@ def _build_export_csv(validated_codes: list[dict], decisions: dict) -> str:
 
 
 def _build_export_text(validated_codes: list[dict], decisions: dict) -> str:
-    """Build plain text code list suitable for copy-pasting into an EHR."""
-
     lines = [f"Clinical Coding Output - {datetime.now().strftime('%Y-%m-%d %H:%M')}"]
     lines.append("=" * 50)
     for code_dict in validated_codes:
@@ -83,13 +77,11 @@ def _render_accepted_code_row(item: dict) -> None:
     badge = confidence_badge_html(item.get("confidence", 0.0))
     st.markdown(
         (
-            '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;'
-            'padding:8px 0;border-bottom:1px solid #f1f5f9;">'
-            '<div style="display:flex;align-items:flex-start;gap:8px;">'
-            '<span style="color:#15803d;font-weight:700;">&#10003;</span>'
+            '<div style="display:flex;align-items:center;justify-content:space-between;gap:0.7rem;'
+            'padding:0.7rem 0;border-bottom:1px solid rgba(16,35,48,0.08);">'
             '<div>'
-            f'<div><strong>{item.get("final_code", "")}</strong> &mdash; {item.get("description", "")}</div>'
-            "</div>"
+            f'<div style="font-size:0.9rem;font-weight:700;color:#102330;">{item.get("final_code", "")}</div>'
+            f'<div style="font-size:0.82rem;color:#5e7280;margin-top:0.12rem;">{item.get("description", "")}</div>'
             "</div>"
             f"<div>{badge}</div>"
             "</div>"
@@ -105,17 +97,20 @@ def render_review_panel(
     missing_specificity: list[dict],
     diagnostics: dict | None = None,
 ) -> None:
-    """Render the right-hand review status panel."""
-
     summary = get_review_summary()
     decisions = get_review_decisions()
 
-    st.subheader("Your Review Progress")
     st.markdown(
-        '<div style="background:#f0fdf4;border:1px solid #86efac;'
-        'border-radius:8px;padding:10px 12px;margin-bottom:10px;">',
+        """
+<div class="cc-shell">
+    <div class="cc-section-kicker">Decision overview</div>
+    <h3 class="cc-section-title">Review progress</h3>
+    <div class="cc-section-copy">Accepted, rejected, changed, and pending decisions update live as you review.</div>
+</div>
+        """,
         unsafe_allow_html=True,
     )
+
     col_a, col_r = st.columns(2)
     with col_a:
         st.metric("Accepted", summary.get("accepted", 0))
@@ -126,71 +121,68 @@ def render_review_panel(
     with col_m:
         st.metric("Changed", summary.get("modified", 0))
     with col_p:
-        st.metric("Not yet reviewed", summary.get("pending", 0))
-    st.markdown("</div>", unsafe_allow_html=True)
+        st.metric("Pending", summary.get("pending", 0))
 
     accepted_codes = _accepted_codes(validated_codes, decisions)
-    with st.expander(
-        f"Accepted codes ({len(accepted_codes)})",
-        expanded=bool(accepted_codes),
-    ):
+    with st.expander(f"Accepted codes ({len(accepted_codes)})", expanded=bool(accepted_codes)):
         if accepted_codes:
             for item in accepted_codes:
                 _render_accepted_code_row(item)
         else:
             st.caption("Accepted or changed codes will appear here.")
 
-    st.divider()
-
     if all_flags:
         acknowledged = get_acknowledged_flags()
         unacked = [flag for flag in all_flags if flag.get("rule_id") not in acknowledged]
-
-        st.subheader(f"Coding alerts ({len(all_flags)})")
         if unacked:
-            st.warning(f"{len(unacked)} coding alert(s) still need to be marked as noted before export.")
+            status_banner(
+                f"{len(unacked)} coding alert(s) still need to be marked as noted before export.",
+                tone="warning",
+            )
+
+        st.markdown(
+            """
+<div class="cc-shell cc-shell-soft">
+    <div class="cc-section-kicker">Attention needed</div>
+    <h3 class="cc-section-title">Coding alerts</h3>
+</div>
+            """,
+            unsafe_allow_html=True,
+        )
 
         severity_styles = {
-            "critical": ("&#128308;", "#7f1d1d", "#fee2e2", "#fca5a5"),
-            "warning": ("&#128993;", "#713f12", "#fef9c3", "#fde047"),
-            "info": ("&#128309;", "#1e3a5f", "#dbeafe", "#93c5fd"),
+            "critical": ("#9d3e39", "#fde9e6", "#efbbb3"),
+            "warning": ("#8b5a16", "#fff3dd", "#f0cf8a"),
+            "info": ("#305f84", "#eaf3fb", "#c9ddeb"),
         }
 
         for flag in all_flags:
             rule_id = flag.get("rule_id", "")
             is_acked = rule_id in acknowledged
             severity = flag.get("severity", "info")
-            icon, text_col, bg, border = severity_styles.get(
-                severity,
-                ("&#9898;", "#374151", "#f3f4f6", "#d1d5db"),
-            )
-            opacity = "opacity:0.55;" if is_acked else ""
+            text_col, bg, border = severity_styles.get(severity, ("#4b5c67", "#f5f7f8", "#d9e1e5"))
+            opacity = "0.62" if is_acked else "1"
 
-            with st.container():
-                col_flag, col_ack = st.columns([4, 1])
-                with col_flag:
-                    st.markdown(
-                        f'<div style="background:{bg};border-left:3px solid {border};'
-                        f'border-radius:0 6px 6px 0;padding:7px 10px;font-size:0.78rem;{opacity}">'
-                        f'<div style="font-weight:700;color:{text_col};">{icon} Coding alert</div>'
-                        f'<div style="color:{text_col};margin-top:2px;">{flag.get("message", "")}</div>'
-                        f'<div style="color:#6b7280;font-style:italic;margin-top:2px;font-size:0.73rem;">'
-                        f'{flag.get("suggested_action", "")}</div>'
-                        "</div>",
-                        unsafe_allow_html=True,
-                    )
-                with col_ack:
-                    if is_acked:
-                        st.markdown(
-                            '<div style="text-align:center;padding-top:8px;">Noted</div>',
-                            unsafe_allow_html=True,
-                        )
-                    else:
-                        if st.button("Noted", key=f"ack_{rule_id}_{flag.get('code', '')}"):
-                            acknowledge_flag(rule_id)
-                            st.rerun()
-
-        st.divider()
+            col_flag, col_ack = st.columns([4, 1])
+            with col_flag:
+                st.markdown(
+                    (
+                        f'<div style="background:{bg};border:1px solid {border};border-radius:16px;'
+                        f'padding:0.8rem 0.9rem;opacity:{opacity};">'
+                        f'<div style="font-size:0.73rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:{text_col};">Coding alert</div>'
+                        f'<div style="font-size:0.85rem;color:{text_col};margin-top:0.22rem;line-height:1.48;">{flag.get("message", "")}</div>'
+                        f'<div style="font-size:0.77rem;color:#5e7280;margin-top:0.26rem;line-height:1.45;">{flag.get("suggested_action", "")}</div>'
+                        "</div>"
+                    ),
+                    unsafe_allow_html=True,
+                )
+            with col_ack:
+                if is_acked:
+                    st.caption("Noted")
+                else:
+                    if st.button("Noted", key=f"ack_{rule_id}_{flag.get('code', '')}", use_container_width=True):
+                        acknowledge_flag(rule_id)
+                        st.rerun()
 
     if missing_specificity:
         with st.expander(f"Could be more specific ({len(missing_specificity)})", expanded=False):
@@ -201,10 +193,19 @@ def render_review_panel(
                     f"(for example `{gap.get('example_code', '')}`)"
                 )
 
-    st.subheader("Export")
+    st.markdown(
+        """
+<div class="cc-shell cc-shell-soft">
+    <div class="cc-section-kicker">Output</div>
+    <h3 class="cc-section-title">Export</h3>
+    <div class="cc-section-copy">Only reviewed codes should leave this workspace.</div>
+</div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     if summary.get("pending", 0):
-        st.warning(f"{summary.get('pending', 0)} code(s) still need your review.")
+        status_banner(f"{summary.get('pending', 0)} code(s) still need your review.", tone="warning")
 
     can_export = all_flags_acknowledged()
     if not can_export:

@@ -15,6 +15,7 @@ from clinical_coder.ui.state_manager import (
     get_workflow_result,
     set_workflow_result,
 )
+from clinical_coder.ui.theme import empty_state, hero_banner, inject_global_styles, section_intro, status_banner
 
 logging.basicConfig(level=logging.INFO)
 
@@ -64,23 +65,19 @@ ASSESSMENT AND PLAN:
 """
 
 
-def _render_header() -> None:
-    st.markdown(
-        """
-<div style="
-    background: linear-gradient(135deg, #1a5276 0%, #148f77 100%);
-    border-radius: 10px;
-    padding: 14px 22px;
-    margin-bottom: 14px;
-    color: white;
-">
-    <div style="font-size:1.35rem;font-weight:700;letter-spacing:-0.02em;">Clinical Coder</div>
-    <div style="font-size:0.76rem;opacity:0.85;margin-top:3px;">
-        ICD-10 code suggestions with human review &mdash; your notes stay on this device unless cloud AI is enabled
-    </div>
-</div>
-""",
-        unsafe_allow_html=True,
+def _render_header(active_code_list: str) -> None:
+    hero_banner(
+        title="Clinical Coder",
+        copy=(
+            "A calmer clinical workspace for turning free-text notes into review-ready ICD-10 suggestions, "
+            "with privacy boundaries and human review visible throughout the process."
+        ),
+        chips=[
+            f"Mode: {'Hosted cloud' if settings.hosted_mode else 'Local-first'}",
+            f"Provider: {_cloud_provider_label() if settings.hosted_mode else settings.reasoning_provider}",
+            f"Terminology: {get_terminology_scope_label(active_code_list)}",
+            "Human review required before export",
+        ],
     )
 
 
@@ -155,8 +152,14 @@ def _sidebar_controls() -> tuple[str, bool]:
 
 def _run(note_text: str, note_type: str, use_cloud: bool) -> dict:
     with st.status("Running orchestrator...", expanded=True) as status:
-        st.write(
-            "Parsing note, applying privacy boundary, retrieving WHO ICD-10 terminology, validating, and building review output."
+        st.markdown(
+            """
+<div style="padding:0.15rem 0 0.45rem 0;line-height:1.6;">
+    Preparing the note, enforcing the privacy boundary, retrieving ICD-10 terminology,
+    validating suggestions, and assembling a reviewer-ready coding draft.
+</div>
+            """,
+            unsafe_allow_html=True,
         )
         result = run_workflow(
             raw_note=note_text,
@@ -177,22 +180,29 @@ def _run(note_text: str, note_type: str, use_cloud: bool) -> dict:
 
 def main() -> None:
     st.set_page_config(page_title="Clinical Coder", page_icon="H", layout="wide", initial_sidebar_state="collapsed")
+    inject_global_styles()
+
     if settings.hosted_mode:
-        st.info(
-            "**Privacy notice:** This app processes clinical notes using cloud AI. "
-            f"Notes are automatically de-identified on this server before being sent to {_cloud_provider_label()}. "
-            "Your original note is never stored. "
-            "By continuing you acknowledge this data flow.",
-            icon="🔒",
+        status_banner(
+            "<strong>Privacy notice:</strong> This hosted workspace de-identifies the note on the server "
+            f"before sending it to {_cloud_provider_label()}. The original note is not intentionally stored.",
+            tone="info",
         )
-    _render_header()
+
     note_type, use_cloud = _sidebar_controls()
+    active_code_list = st.session_state.get("active_code_list", settings.icd10_code_list_path)
+    _render_header(active_code_list)
 
     col_note, col_codes, col_review = st.columns([3, 3, 2], gap="medium")
     result = get_workflow_result()
 
     with col_note:
-        st.subheader("Clinical Note")
+        section_intro(
+            kicker="Input workspace",
+            title="Clinical note",
+            copy="Paste a note, load a sample, or inspect highlighted evidence after a run.",
+            meta=[f"Note type: {note_type.replace('_', ' ')}"],
+        )
         if result is None:
             note_text = st.text_area(
                 "Paste note",
@@ -221,8 +231,14 @@ def main() -> None:
                 st.rerun()
 
             if use_cloud:
-                st.info(
-                    "When cloud AI is enabled, only a de-identified version of your note is sent - names, dates, and IDs are replaced before sending."
+                status_banner(
+                    "Cloud AI receives only the de-identified version of the note. Names, dates, and identifiers are replaced before sending.",
+                    tone="info",
+                )
+            else:
+                status_banner(
+                    "This run stays local unless you explicitly enable cloud reasoning.",
+                    tone="success",
                 )
         else:
             evidence_spans = {item.get("code"): item.get("evidence_span", "") for item in result.get("validated_codes", [])}
@@ -238,13 +254,22 @@ def main() -> None:
                 st.rerun()
 
     with col_codes:
-        st.subheader("Suggested Codes")
+        section_intro(
+            kicker="Coding draft",
+            title="Suggested codes",
+            copy="Review the strongest suggestions first, then inspect uncertain items with rationale and alternatives.",
+            meta=[f"Provider route: {result.get('provider_routes', {}).get('coding', 'Awaiting run') if result else 'Awaiting run'}"],
+        )
         if result is None:
-            st.info("Paste a note and run the workflow to see suggestions.")
+            empty_state(
+                icon="&#128209;",
+                title="No coding draft yet",
+                copy="Run a note to see grouped ICD-10 suggestions, supporting evidence, and review actions.",
+            )
         else:
             st.markdown(
                 (
-                    '<div style="font-size:0.8rem;color:#6b7280;margin-bottom:4px;">'
+                    '<div class="cc-shell cc-shell-soft" style="font-size:0.82rem;color:#5e7280;margin-bottom:0.7rem;">'
                     f"Found {len(result.get('entities', []))} clinical terms &middot; "
                     f"Suggested {len(result.get('validated_codes', []))} codes &middot; "
                     f"AI: {result.get('coding_model', result.get('extraction_model', '?'))}"
@@ -252,13 +277,21 @@ def main() -> None:
                 ),
                 unsafe_allow_html=True,
             )
-            st.caption(f"Active terminology: `{result.get('terminology_scope', settings.terminology_scope_label)}`")
             render_code_panel(result.get("validated_codes", []), result.get("explanations", []))
 
     with col_review:
-        st.subheader("Review")
+        section_intro(
+            kicker="Review rail",
+            title="Review and export",
+            copy="Track decisions, resolve alerts, inspect diagnostics, and prepare the final coding output.",
+            meta=[f"Terminology: {result.get('terminology_scope', settings.terminology_scope_label) if result else settings.terminology_scope_label}"],
+        )
         if result is None:
-            st.info("Run the workflow to start reviewing.")
+            empty_state(
+                icon="&#129516;",
+                title="Review tools appear after a run",
+                copy="Accepted codes, coding alerts, diagnostics, and export actions will populate here once the workflow completes.",
+            )
         else:
             render_review_panel(
                 validated_codes=result.get("validated_codes", []),
