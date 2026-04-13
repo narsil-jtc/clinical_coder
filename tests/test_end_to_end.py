@@ -62,3 +62,5 @@ def test_smallest_vertical_slice(monkeypatch):
     assert result["validated_codes"][0]["code"] == "E11.2"
     assert result["all_validation_flags"] == []
     assert result["explanations"][0]["code"] == "E11.2"
+    assert result["diagnostics"]["counts"]["entities"] == 1
+    assert any("Coding returned 1 candidate" in item for item in result["diagnostics"]["trace"])

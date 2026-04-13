@@ -28,6 +28,7 @@ class WorkflowState(TypedDict, total=False):
     coding_model: str
     explanation_model: str
     provider_routes: dict[str, str]
+    diagnostics: dict
     use_cloud: bool
     _retry_count: int
     errors: list[str]

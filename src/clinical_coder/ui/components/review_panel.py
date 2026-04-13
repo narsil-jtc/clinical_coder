@@ -103,6 +103,7 @@ def render_review_panel(
     all_flags: list[dict],
     workflow_errors: list[str],
     missing_specificity: list[dict],
+    diagnostics: dict | None = None,
 ) -> None:
     """Render the right-hand review status panel."""
 
@@ -226,3 +227,30 @@ def render_review_panel(
         with st.expander(f"System notices ({len(workflow_errors)})", expanded=False):
             for err in workflow_errors:
                 st.caption(f"Notice: {err}")
+
+    if diagnostics:
+        counts = diagnostics.get("counts", {})
+        trace = diagnostics.get("trace", [])
+        with st.expander("Run diagnostics", expanded=bool(workflow_errors) or not validated_codes):
+            if counts:
+                col_1, col_2 = st.columns(2)
+                with col_1:
+                    st.caption(f"Sections: {counts.get('sections', 0)}")
+                    st.caption(f"Entities: {counts.get('entities', 0)}")
+                    st.caption(f"Candidates: {counts.get('candidate_codes', 0)}")
+                    st.caption(f"Validated: {counts.get('validated_codes', 0)}")
+                with col_2:
+                    st.caption(f"Redactions: {counts.get('redactions', 0)}")
+                    st.caption(f"Retrieved: {counts.get('retrieved_context', 0)}")
+                    st.caption(f"Alerts: {counts.get('alerts', 0)}")
+                    st.caption(f"Explanations: {counts.get('explanations', 0)}")
+            provider_routes = diagnostics.get("provider_routes", {})
+            if provider_routes:
+                st.caption(f"Routes: {provider_routes}")
+            models = diagnostics.get("models", {})
+            if models:
+                st.caption(f"Models: {models}")
+            if trace:
+                st.markdown("**Trace**")
+                for item in trace:
+                    st.caption(item)

@@ -33,6 +33,10 @@ def _append_audit(event: dict) -> None:
     audit_path.open("a", encoding="utf-8").write(json.dumps(event) + "\n")
 
 
+def _record_trace(state: WorkflowState, message: str) -> None:
+    state.setdefault("diagnostics", {}).setdefault("trace", []).append(message)
+
+
 def _build_local_provider(state: dict) -> ReasoningProvider:
     from .providers.ollama import OllamaReasoningProvider
 
@@ -104,25 +108,33 @@ def run_workflow(
         "_retry_count": 0,
         "errors": [],
         "provider_routes": {},
+        "diagnostics": {"trace": [], "counts": {}},
         "icd10_code_list_path": code_list_path or settings.icd10_code_list_path,
         "terminology_scope": get_terminology_scope_label(code_list_path or settings.icd10_code_list_path),
         "llm_num_ctx": llm_num_ctx or settings.ollama_num_ctx,
         "llm_num_predict": llm_num_predict or settings.ollama_num_predict,
         "llm_keep_alive": llm_keep_alive or settings.ollama_keep_alive,
     }
+    _record_trace(state, f"Workflow started for note type '{note_type}' with cloud={'on' if use_cloud else 'off'}.")
 
     sections = parse_sections(raw_note)
     state["sections"] = sections
+    _record_trace(state, f"Parsed {len(sections)} note section(s).")
 
     minimised = build_extraction_text(sections)
     deid = deidentify_text(minimised)
     state["deidentified_text"] = deid.text
     state["redacted_items"] = deid.redacted_items
+    _record_trace(
+        state,
+        f"Prepared extraction payload: {len(minimised)} chars, de-identified to {len(state['deidentified_text'])} chars with {len(state['redacted_items'])} redaction(s).",
+    )
 
     if use_cloud and settings.deidentify_required_for_cloud and not state["deidentified_text"]:
         state["errors"].append("Cloud reasoning blocked because de-identification produced no safe payload.")
         use_cloud = False
         state["use_cloud"] = False
+        _record_trace(state, "Cloud reasoning disabled because de-identification produced no safe payload.")
 
     try:
         extraction_provider, extraction_route = _select_provider_for_task(
@@ -133,18 +145,23 @@ def run_workflow(
         )
         state["provider_routes"]["extract"] = extraction_route
         extraction_payload = state["deidentified_text"] if extraction_route.startswith("cloud:") else minimised
+        _record_trace(state, f"Extraction route: {extraction_route}.")
         state["entities"], state["extraction_model"] = run_extraction(extraction_provider, extraction_payload)
+        _record_trace(state, f"Extraction returned {len(state['entities'])} entity(ies).")
     except Exception as exc:
         state["entities"] = []
         state["errors"].append(f"Extractor: {exc}")
+        _record_trace(state, f"Extraction failed: {exc}")
 
     query_terms = []
     for entity in state.get("entities", []):
         term = entity.get("normalized_term") or entity.get("term")
         if term and term.lower() not in {existing.lower() for existing in query_terms}:
             query_terms.append(term)
+    _record_trace(state, f"Built {len(query_terms)} unique retrieval query term(s).")
 
     state["retrieved_context"] = retrieve_context(query_terms, path_override=state["icd10_code_list_path"])
+    _record_trace(state, f"Retrieval returned {len(state['retrieved_context'])} context item(s).")
 
     if state.get("entities"):
         try:
@@ -155,6 +172,7 @@ def run_workflow(
                 state["errors"],
             )
             state["provider_routes"]["coding"] = coding_route
+            _record_trace(state, f"Coding route: {coding_route}.")
             (
                 state["candidate_codes"],
                 state["missing_specificity_flags"],
@@ -165,13 +183,19 @@ def run_workflow(
                 state["retrieved_context"],
                 state["terminology_scope"],
             )
+            _record_trace(
+                state,
+                f"Coding returned {len(state['candidate_codes'])} candidate(s) and {len(state['missing_specificity_flags'])} specificity gap(s).",
+            )
         except Exception as exc:
             state["candidate_codes"] = []
             state["missing_specificity_flags"] = []
             state["errors"].append(f"Coder: {exc}")
+            _record_trace(state, f"Coding failed: {exc}")
     else:
         state["candidate_codes"] = []
         state["missing_specificity_flags"] = []
+        _record_trace(state, "Coding skipped because extraction returned no entities.")
 
     validated_codes, all_flags = validate_candidates(
         state["candidate_codes"],
@@ -180,6 +204,10 @@ def run_workflow(
     )
     state["validated_codes"] = validated_codes
     state["all_validation_flags"] = all_flags
+    _record_trace(
+        state,
+        f"Validation kept {len(validated_codes)} code(s) and produced {len(all_flags)} alert(s).",
+    )
 
     if validated_codes:
         explanation_excerpt = build_note_excerpt(sections)
@@ -191,6 +219,7 @@ def run_workflow(
                 state["errors"],
             )
             state["provider_routes"]["explain"] = explanation_route
+            _record_trace(state, f"Explanation route: {explanation_route}.")
             explanation_payload = (
                 state["deidentified_text"]
                 if explanation_route.startswith("cloud:")
@@ -202,12 +231,26 @@ def run_workflow(
                 explanation_payload,
             )
             state["explanation_model"] = getattr(explanation_provider, "provider_name", "unknown")
+            _record_trace(state, f"Explanation returned {len(state['explanations'])} item(s).")
         except Exception as exc:
             state["explanations"] = []
             state["errors"].append(f"Explainer: {exc}")
+            _record_trace(state, f"Explanation failed: {exc}")
     else:
         state["explanations"] = []
         state["explanation_model"] = ""
+        _record_trace(state, "Explanation skipped because validation returned no codes.")
+
+    state["diagnostics"]["counts"] = {
+        "sections": len(state.get("sections", {})),
+        "redactions": len(state.get("redacted_items", [])),
+        "entities": len(state.get("entities", [])),
+        "retrieved_context": len(state.get("retrieved_context", [])),
+        "candidate_codes": len(state.get("candidate_codes", [])),
+        "validated_codes": len(state.get("validated_codes", [])),
+        "alerts": len(state.get("all_validation_flags", [])),
+        "explanations": len(state.get("explanations", [])),
+    }
 
     _append_audit(
         {

@@ -265,6 +265,15 @@ def main() -> None:
                 all_flags=result.get("all_validation_flags", []),
                 workflow_errors=result.get("errors", []),
                 missing_specificity=result.get("missing_specificity_flags", []),
+                diagnostics={
+                    **result.get("diagnostics", {}),
+                    "provider_routes": result.get("provider_routes", {}),
+                    "models": {
+                        "extract": result.get("extraction_model", ""),
+                        "coding": result.get("coding_model", ""),
+                        "explain": result.get("explanation_model", ""),
+                    },
+                },
             )
 
 
