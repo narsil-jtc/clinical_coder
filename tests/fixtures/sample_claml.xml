@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ClaML>
+  <Class kind="category" code="I21">
+    <Rubric kind="preferred"><Label>Acute myocardial infarction</Label></Rubric>
+    <SubClass code="I21.0" />
+  </Class>
+  <Class kind="category" code="I21.0">
+    <Rubric kind="preferred"><Label>Acute transmural myocardial infarction of anterior wall</Label></Rubric>
+    <Rubric kind="inclusion"><Label>Anterior STEMI</Label></Rubric>
+  </Class>
+  <Class kind="category" code="E11">
+    <Rubric kind="preferred"><Label>Type 2 diabetes mellitus</Label></Rubric>
+    <SubClass code="E11.2" />
+  </Class>
+  <Class kind="category" code="E11.2">
+    <Rubric kind="preferred"><Label>Type 2 diabetes mellitus with kidney complications</Label></Rubric>
+  </Class>
+</ClaML>

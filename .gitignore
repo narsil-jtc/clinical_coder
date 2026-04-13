@@ -1,0 +1,35 @@
+# Environment
+.env
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Project data (never commit patient data or large model artefacts)
+# data/chroma_db/ - included in git: ICD-10 terminology index only (no patient data)
+data/audit.log
+data/sessions/
+*.pkl
+*.bin
+
+# Secrets
+*.key
+*.pem
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Build
+dist/
+build/
+*.egg-info/

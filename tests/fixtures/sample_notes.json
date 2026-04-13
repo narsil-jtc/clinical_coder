@@ -1,0 +1,29 @@
+[
+  {
+    "note_id": "TEST-STEMI-001",
+    "note_type": "discharge_summary",
+    "template": "STEMI",
+    "expected_codes": ["I21.0", "E11.2", "N17.9"],
+    "expected_principal": "I21.0",
+    "edge_cases": [],
+    "text": "DISCHARGE SUMMARY\n\nPRESENTING COMPLAINT:\nCentral crushing chest pain radiating to the left arm. Duration approximately 3 hours prior to arrival.\n\nPAST MEDICAL HISTORY:\n- Type 2 diabetes mellitus with nephropathy - on metformin\n- Hypertension - on amlodipine\n- Hypercholesterolaemia - on atorvastatin\nEx-smoker (40 pack-years, quit 2015)\n\nINVESTIGATIONS:\nECG: ST elevation in anterior leads (4mm)\nTroponin I: 3.2 ng/mL (reference < 0.04)\nEcho: Anterior wall hypokinesis, EF 42%\n\nASSESSMENT AND PLAN:\n\n1. Anterior acute transmural myocardial infarction - confirmed on ECG and troponin rise.\n   Plan: Emergency PCI performed to left anterior descending artery (LAD). Drug-eluting stent inserted. Dual antiplatelet therapy commenced (aspirin + clopidogrel).\n\n2. Type 2 diabetes mellitus with nephropathy.\n   Plan: Continue metformin. Renal follow-up arranged. Lifestyle advice provided.\n\n3. Acute kidney injury - creatinine peaked at 178 umol/L post-procedure, likely contrast nephropathy.\n   Plan: IV hydration. Creatinine improving at discharge (145 umol/L).\n\nDISCHARGE MEDICATIONS:\nAspirin 75mg daily, Clopidogrel 75mg daily, Ramipril 5mg daily, Atorvastatin 80mg nocte, Bisoprolol 2.5mg daily\n\nFOLLOW UP:\nCardiology outpatients in 6 weeks. Cardiac rehabilitation referral made."
+  },
+  {
+    "note_id": "TEST-STEMI-002",
+    "note_type": "discharge_summary",
+    "template": "STEMI",
+    "expected_codes": ["I21.1"],
+    "expected_principal": "I21.1",
+    "edge_cases": ["no_complications"],
+    "text": "DISCHARGE SUMMARY\n\nPRESENTING COMPLAINT:\nSudden onset chest pain 7/10 severity, onset at rest. No radiation. Associated diaphoresis.\n\nPAST MEDICAL HISTORY:\n- Non-smoker\n\nINVESTIGATIONS:\nECG: ST elevation in inferior leads II, III, aVF (3mm)\nTroponin I: 5.8 ng/mL\n\nASSESSMENT AND PLAN:\n\n1. Inferior acute transmural myocardial infarction - confirmed on ECG and troponin.\n   Plan: Emergency PCI to right coronary artery (RCA). Stent inserted. Dual antiplatelet therapy.\n\nDISCHARGE MEDICATIONS:\nAspirin 75mg daily, Ticagrelor 90mg BD, Ramipril 2.5mg daily, Atorvastatin 80mg nocte\n\nFOLLOW UP:\nCardiology outpatients in 4 weeks."
+  },
+  {
+    "note_id": "TEST-HF-001",
+    "note_type": "discharge_summary",
+    "template": "HEART_FAILURE",
+    "expected_codes": ["I50.9", "I48.9"],
+    "expected_principal": "I50.9",
+    "edge_cases": ["acute_on_chronic_selection"],
+    "text": "DISCHARGE SUMMARY\n\nPRESENTING COMPLAINT:\nProgressive dyspnoea over 7 days. Orthopnoea. Paroxysmal nocturnal dyspnoea. Unable to lie flat. Bilateral ankle swelling.\n\nPAST MEDICAL HISTORY:\n- Ischaemic cardiomyopathy - known reduced EF on previous echo\n- Atrial fibrillation - on apixaban\n- Hypertension\n\nINVESTIGATIONS:\nCXR: Cardiomegaly, bilateral pleural effusions, upper lobe diversion\nBNP: 3400 pg/mL\nEcho: EF 32% (severely reduced), no significant valve disease\n\nASSESSMENT AND PLAN:\n\n1. Acute-on-chronic heart failure (HFrEF, EF 32%) - decompensated presentation. BNP markedly elevated.\n   Plan: IV furosemide 80mg daily. Fluid restrict to 1.5L/day. Daily weights. Optimise treatment and arrange follow-up.\n\n2. Atrial fibrillation - rate 110 bpm on admission, now rate-controlled at 72 bpm.\n   Plan: Continue anticoagulation (apixaban). Rate control with bisoprolol.\n\nDISCHARGE MEDICATIONS:\nFurosemide 80mg daily, Ramipril 5mg BD, Bisoprolol 5mg daily, Eplerenone 25mg daily, Apixaban 5mg BD\n\nFOLLOW UP:\nHeart failure clinic in 2 weeks."
+  }
+]

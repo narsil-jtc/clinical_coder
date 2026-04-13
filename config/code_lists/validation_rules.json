@@ -1,0 +1,51 @@
+{
+  "_comment": "Stub validation rules for WHO ICD-10. Expand with real excludes, mandatory additional coding guidance, and laterality coverage where the source supports it.",
+  "version": "WHO-ICD-10-2019",
+
+  "excludes1_pairs": [
+    {
+      "rule_id": "EX1-I21-I22",
+      "description": "Subsequent myocardial infarction (I22) excludes acute myocardial infarction (I21) when the later event definition applies.",
+      "code_a_prefix": "I21",
+      "code_b_prefix": "I22",
+      "note": "Do not code I21.x and I22.x together for the same episode if I22 applies."
+    },
+    {
+      "rule_id": "EX1-E10-E11",
+      "description": "Type 1 diabetes mellitus (E10) and type 2 diabetes mellitus (E11) should not both be assigned as the same primary diabetes type.",
+      "code_a_prefix": "E10",
+      "code_b_prefix": "E11",
+      "note": "The patient should not be assigned conflicting primary diabetes categories without clear justification."
+    }
+  ],
+
+  "mandatory_additional_codes": [
+    {
+      "rule_id": "ADD-I21-TOBACCO",
+      "trigger_prefix": "I21",
+      "description": "For acute myocardial infarction, consider whether separately documented tobacco use or dependence should also be captured."
+    },
+    {
+      "rule_id": "ADD-E11-RENAL",
+      "trigger_prefix": "E11.2",
+      "description": "For type 2 diabetes mellitus with kidney complications, review whether associated renal disease detail is documented elsewhere in the note."
+    }
+  ],
+
+  "laterality_required_prefixes": [
+    "M17",
+    "M16",
+    "S72",
+    "S82",
+    "H25",
+    "H26",
+    "H33",
+    "H40"
+  ],
+
+  "header_codes": [
+    "I21", "I22", "E10", "E11", "J18", "S72", "M17", "M16",
+    "H25", "H26", "H40", "H33", "F10", "F11", "F12", "F13",
+    "F14", "F15", "F16", "F17", "F18", "F19"
+  ]
+}

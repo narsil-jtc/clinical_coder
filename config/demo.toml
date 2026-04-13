@@ -1,0 +1,4 @@
+title = "Clinical Coder Demo"
+note_type = "discharge_summary"
+terminology_source = "who_icd10_2019"
+reasoning_mode = "local"
