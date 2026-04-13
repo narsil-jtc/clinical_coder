@@ -115,3 +115,22 @@ def test_hybrid_mode_routes_only_allowed_tasks_to_cloud(monkeypatch):
     assert result["provider_routes"]["extract"] == "cloud:cloud-stub"
     assert result["provider_routes"]["coding"] == "local:local-stub"
     assert result["provider_routes"]["explain"] == "local:local-stub"
+
+
+def test_hybrid_mode_can_use_cloud_without_building_local_provider(monkeypatch):
+    monkeypatch.setattr(settings, "reasoning_mode", "hybrid")
+    monkeypatch.setattr(settings, "cloud_allowed_tasks", "extract,coding,explain")
+    monkeypatch.setattr(
+        orchestrator,
+        "_build_local_provider",
+        lambda state: (_ for _ in ()).throw(RuntimeError("local provider should not be built")),
+    )
+    monkeypatch.setattr(orchestrator, "_build_cloud_provider", lambda: CloudOnlyProvider())
+
+    result = orchestrator.run_workflow(
+        raw_note="ASSESSMENT:\nAnterior STEMI confirmed.",
+        use_cloud=True,
+    )
+
+    assert result["provider_routes"]["extract"] == "cloud:cloud-stub"
+    assert result["provider_routes"]["coding"] == "cloud:cloud-stub"

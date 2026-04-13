@@ -66,17 +66,19 @@ def _select_provider_for_task(
 ) -> tuple[ReasoningProvider, str]:
     """Select the provider for a specific task with safe hybrid-mode fallback."""
 
-    local_provider = _build_local_provider(state)
     if not use_cloud:
+        local_provider = _build_local_provider(state)
         return local_provider, f"local:{local_provider.provider_name}"
 
     if settings.reasoning_mode_normalized != "hybrid":
+        local_provider = _build_local_provider(state)
         errors.append(
             f"Hybrid reasoning requested for '{task}' but REASONING_MODE is not set to 'hybrid'; using local provider."
         )
         return local_provider, f"local:{local_provider.provider_name}"
 
     if task.lower() not in settings.cloud_allowed_task_set:
+        local_provider = _build_local_provider(state)
         return local_provider, f"local:{local_provider.provider_name}"
 
     try:
@@ -84,6 +86,7 @@ def _select_provider_for_task(
         return cloud_provider, f"cloud:{cloud_provider.provider_name}"
     except Exception as exc:
         errors.append(f"Cloud provider unavailable for '{task}'; using local provider instead. {exc}")
+        local_provider = _build_local_provider(state)
         return local_provider, f"local:{local_provider.provider_name}"
 
 
